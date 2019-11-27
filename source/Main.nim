@@ -19,7 +19,7 @@ var window = newRenderWindow(videoMode(width, height), "NN Rockets", WindowStyle
 var rocketSprite = newSprite(newTexture("../assets/Rocket.png"))
 rocketSprite.origin = vec2(8, 8)
 
-var goal = vec2(400, 300)
+var goal = vec2(650, 450)
 var goalCircle = newCircleShape(10)
 goalCircle.position=goal
 goalCircle.fillColor=color(0, 255, 0, 255)
@@ -44,7 +44,7 @@ proc updateRockets(debug, checkClose: bool) =
   for i in countup(0, rockets.len()-1):
     var closest = findClosest(i)
     if rockets[i].alive:
-      var input = convertToFloat(rockets[i].checkRayCollision(width, height, walls, rockets))
+      var input = rockets[i].checkRayCollision(width, height, walls, rockets)
       input.add(distance(rockets[i].position, goal))
       input.add(findClosest(i))
 

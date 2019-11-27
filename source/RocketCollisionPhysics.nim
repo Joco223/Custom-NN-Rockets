@@ -1,28 +1,41 @@
-proc onSegment(p, q, r: Vector2f): bool =
-  if q.x <= max(p.x, r.x) and q.x >= min(p.x, r.x) and q.y <= max(p.y, r.y) and q.y >= min(p.y, r.y):
-    return true
-  return false
+proc getLineIntersection(p0, p1, p2, p3: Vector2f): Vector2f =
+  let s1_x = p1.x - p0.x
+  let s1_y = p1.y - p0.y
 
-proc orientation(p, q, r: Vector2f): int = 
-  let val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y)
+  let s2_x = p3.x - p2.x
+  let s2_y = p3.y - p2.y
 
-  if val == 0: return 0
+  let s = (-s1_y * (p0.x - p2.x) + s1_x * (p0.x - p2.y))
+  let t = (s2_x * (p0.y - p2.y) - s2_y * (p0.x - p2.x))
 
-  if val > 0:
-    return 1
+  if (s >= 0 and s <= 1 and t >= 0 and t <= 1):
+    return vec2(p0.x + (t*s1_x), p0.y + (t*s1_y))
   else:
+    return vec2(9999, 9999)
+
+proc getCircleIntersection(p1, p2, p3: Vector2f): Vector2f = 
+  let lab = sqrt((p2.x-p1.x)*(p2.x-p1.x)+(p2.y-p1.y)*(p2.y-p1.y))
+
+  let dx = (p2.x-p1.x)/lab
+  let dy = (p2.y-p1.y)/lab
+
+  let t = dx*(p3.x-p1.x) + dy*(p3.y-p1.y)
+
+  let ex = t*dx+p1.x
+  let ey = t*dy+p1.y
+
+  let lec = sqrt((ex-p3.x)*(ex-p3.x)+(ey-p3.y)*(ey-p3.y))
+
+  if lec < 20:
+    let dt = sqrt(20*20 - lec*lec)
+    return vec2((t-dt)*dx+p1.x, (t-dt)*dy+p1.y)
+  else:
+    return vec2(9999, 9999)
+
+proc intersectionRatio(p1, p2: Vector2f, totalLength: float): float =
+  if p1 == vec2(9999, 9999):
     return 2
-
-proc checkLineIntersection(p1, q1, p2, q2: Vector2f): bool =
-  let o1 = orientation(p1, q1, p2)
-  let o2 = orientation(p1, q1, q2)
-  let o3 = orientation(p2, q2, p1)
-  let o4 = orientation(p2, q2, q1)
-
-  if o1 != o2 and o3 != o4:
-    return true
-
-  if o1 == 0 and onSegment(p1, p2, q1): return true
-  if o2 == 0 and onSegment(p1, q2, q1): return true
-  if o3 == 0 and onSegment(p2, p1, q2): return true
-  if o4 == 0 and onSegment(p2, q1, q2): return true
+  let dist = sqrt((p1.x - p2.x)*(p1.x - p2.x) + (p1.y - p2.y)*(p1.y - p2.y))
+  var final = dist/totalLength
+  if final > 1: final = 2
+  return final

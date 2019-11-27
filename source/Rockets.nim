@@ -5,6 +5,7 @@ import os
 import strutils
 import json
 import NeuronNetwork
+
 include RocketCollisionPhysics
 
 let currentRunDir = replace(getDateStr() & "_" & getClockStr(), ":", "-")
@@ -56,58 +57,73 @@ proc distance*(p1, p2: Vector2f): float =
 proc dot*(p1, p2: Vector2f): float =
   return p1.x * p2.x + p1.y * p2.y
 
-method checkRayCollision*(this: Rocket, width, height: int, walls: openArray[RectangleShape], rockets: openArray[Rocket]): seq[bool] {.base.} =
-  var intersections = newSeq[bool](16)
+method checkRayCollision*(this: Rocket, width, height: int, walls: openArray[RectangleShape], rockets: openArray[Rocket]): seq[float] {.base.} =
+  var intersections = newSeq[float](16)
   let radAngle = degToRad(this.angle)
 
   for i in countup(0, 15):
     let rayAngle = radAngle + degToRad((float)((float)(i)*22.5))
     let rayDir = vec2(this.position.x + cos(rayAngle)*this.rayLength, this.position.y + sin(rayAngle)*this.rayLength)
 
-    intersections[i] = checkLineIntersection(this.position, rayDir, vec2(0, 0), vec2(width, 0)) #Top of the window intersection
-    if intersections[i] == false: intersections[i] = checkLineIntersection(this.position, rayDir, vec2(0, height), vec2(width, height)) #Bottom of the window intersection
-    if intersections[i] == false: intersections[i] = checkLineIntersection(this.position, rayDir, vec2(0, 0), vec2(0, height)) #Left of the window intersection
-    if intersections[i] == false: intersections[i] = checkLineIntersection(this.position, rayDir, vec2(width, 0), vec2(width, height)) #Right of the window interstection
+    intersections[i] = intersectionRatio(getLineIntersection(this.position, rayDir, vec2(0, 0), vec2(width, 0)), this.position, this.rayLength)
+    intersections[i] = min(intersections[i], intersectionRatio(getLineIntersection(this.position, rayDir, vec2(0, height), vec2(width, height)), this.position, this.rayLength))
+    intersections[i] = min(intersections[i], intersectionRatio(getLineIntersection(this.position, rayDir, vec2(0, 0), vec2(0, height)), this.position, this.rayLength))
+    intersections[i] = min(intersections[i], intersectionRatio(getLineIntersection(this.position, rayDir, vec2(width, 0), vec2(width, height)), this.position, this.rayLength))
 
-    if intersections[i] == false:
-      for wall in walls:
-        #Top of the wall intersection
-        if checkLineIntersection(this.position, rayDir, wall.position, vec2(wall.position.x+wall.size.x, wall.position.y)):
-          intersections[i] = true
-          break
+    for wall in walls:
+      intersections[i] = min(intersections[i], intersectionRatio(getLineIntersection(this.position, rayDir, wall.position, vec2(wall.position.x+wall.size.x, wall.position.y)), this.position, this.rayLength))
+      intersections[i] = min(intersections[i], intersectionRatio(getLineIntersection(this.position, rayDir, vec2(wall.position.x, wall.position.y+wall.size.y), vec2(wall.position.x+wall.size.x, wall.position.y+wall.size.y)), this.position, this.rayLength))
+      intersections[i] = min(intersections[i], intersectionRatio(getLineIntersection(this.position, rayDir, wall.position, vec2(wall.position.x, wall.position.y+wall.size.y)), this.position, this.rayLength))
+      intersections[i] = min(intersections[i], intersectionRatio(getLineIntersection(this.position, rayDir, vec2(wall.position.x+wall.size.y, wall.position.y), vec2(wall.position.x+wall.size.x, wall.position.y+wall.size.y)), this.position, this.rayLength))
 
-        #Bottom of the wall intersection
-        if checkLineIntersection(this.position, rayDir, vec2(wall.position.x, wall.position.y+wall.size.y), vec2(wall.position.x+wall.size.x, wall.position.y+wall.size.y)):
-          intersections[i] = true
-          break
+    for rocket in rockets:
+      if this.id != rocket.id:
+        intersections[i] = min(intersections[i], intersectionRatio(getCircleIntersection(this.position, rayDir, rocket.position), this.position, this.rayLength))
+    
+    # intersections[i] = checkLineIntersection(this.position, rayDir, vec2(0, 0), vec2(width, 0)) #Top of the window intersection
+    # if intersections[i] == false: intersections[i] = checkLineIntersection(this.position, rayDir, vec2(0, height), vec2(width, height)) #Bottom of the window intersection
+    # if intersections[i] == false: intersections[i] = checkLineIntersection(this.position, rayDir, vec2(0, 0), vec2(0, height)) #Left of the window intersection
+    # if intersections[i] == false: intersections[i] = checkLineIntersection(this.position, rayDir, vec2(width, 0), vec2(width, height)) #Right of the window interstection
 
-        #Left of the wall intersection
-        if checkLineIntersection(this.position, rayDir, wall.position, vec2(wall.position.x, wall.position.y+wall.size.y)):
-          intersections[i] = true
-          break
+    # if intersections[i] == false:
+    #   for wall in walls:
+    #     #Top of the wall intersection
+    #     if checkLineIntersection(this.position, rayDir, wall.position, vec2(wall.position.x+wall.size.x, wall.position.y)):
+    #       intersections[i] = true
+    #       break
 
-        #Right of the wall intersection
-        if checkLineIntersection(this.position, rayDir, vec2(wall.position.x+wall.size.y, wall.position.y), vec2(wall.position.x+wall.size.x, wall.position.y+wall.size.y)):
-          intersections[i] = true
-          break
+    #     #Bottom of the wall intersection
+    #     if checkLineIntersection(this.position, rayDir, vec2(wall.position.x, wall.position.y+wall.size.y), vec2(wall.position.x+wall.size.x, wall.position.y+wall.size.y)):
+    #       intersections[i] = true
+    #       break
 
-      for rocket in rockets:
-        if this.id != rocket.id:
-          let ax = this.position.x - rocket.position.x
-          let ay = this.position.y - rocket.position.y 
-          let bx = rayDir.x - rocket.position.x
-          let by = rayDir.y - rocket.position.y
-          let a = (bx-ax)*(bx-ax) + (by-ay)*(by-ay)
-          let b = 2*(ax*(bx-ax) + ay*(by-ay))
-          let c = ax*ax + ay*ay - 20*20
-          let disc = b*b - 4*a*c
-          if disc > 0:
-            let sqrtdisc = sqrt(disc)
-            let t1 = (-b + sqrtdisc)/(2*a)
-            let t2 = (-b - sqrtdisc)/(2*a)
-            if (0 < t1 and t1 < 1) or (0 < t2 and t2 < 1):
-              intersections[i] = true
-              break
+    #     #Left of the wall intersection
+    #     if checkLineIntersection(this.position, rayDir, wall.position, vec2(wall.position.x, wall.position.y+wall.size.y)):
+    #       intersections[i] = true
+    #       break
+
+    #     #Right of the wall intersection
+    #     if checkLineIntersection(this.position, rayDir, vec2(wall.position.x+wall.size.y, wall.position.y), vec2(wall.position.x+wall.size.x, wall.position.y+wall.size.y)):
+    #       intersections[i] = true
+    #       break
+
+    #   for rocket in rockets:
+    #     if this.id != rocket.id:
+    #       let ax = this.position.x - rocket.position.x
+    #       let ay = this.position.y - rocket.position.y 
+    #       let bx = rayDir.x - rocket.position.x
+    #       let by = rayDir.y - rocket.position.y
+    #       let a = (bx-ax)*(bx-ax) + (by-ay)*(by-ay)
+    #       let b = 2*(ax*(bx-ax) + ay*(by-ay))
+    #       let c = ax*ax + ay*ay - 20*20
+    #       let disc = b*b - 4*a*c
+    #       if disc > 0:
+    #         let sqrtdisc = sqrt(disc)
+    #         let t1 = (-b + sqrtdisc)/(2*a)
+    #         let t2 = (-b - sqrtdisc)/(2*a)
+    #         if (0 < t1 and t1 < 1) or (0 < t2 and t2 < 1):
+    #           intersections[i] = true
+    #           break
 
   return intersections
 
@@ -153,11 +169,10 @@ method drawDebug*(this: Rocket, width, height: int, window: RenderWindow, walls:
     rayRect.position = this.position
     rayRect.size = rayDir
     rayRect.rotation = rayAngle
-
-    if intersectionRays[i]:
+    if intersectionRays[i] == 2:
       rayRect.fillColor = color(255, 0, 0, 255)
     else:
-      rayRect.fillColor = color(0, 255, 0, 255)
+      rayRect.fillColor = color((int)((1-intersectionRays[i])*255), (int)(intersectionRays[i]*255), 0, 255)
 
     window.draw(rayRect)
 
