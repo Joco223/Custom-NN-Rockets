@@ -16,11 +16,15 @@ proc generateNetwork*(inputSize, outputSize, maxOutputCount, maxNetworkSize, max
 
   var tmpNeuron: Neuron
   for i in countup(0, networkSize-1):
+    if i < inputSize:
+      tmpNeuron.inputNeuron = true
+    else:
+      tmpNeuron.inputNeuron = false
     newNeuronNetwork.neurons.add(tmpNeuron)
 
   for i in countup(0, networkSize-1):
     if outputsLeft > 0:
-      if rand(networkSize) == 0: #It is a new output neuron
+      if rand(networkSize) == 0 and i >= inputSize: #It is a new output neuron
         newNeuronNetwork.neurons[i].finalNeuron = true
         dec(outputsLeft)
 
@@ -35,6 +39,7 @@ proc generateNetwork*(inputSize, outputSize, maxOutputCount, maxNetworkSize, max
     for j in countup(0, connectionCount-1):
       let outputNeuron = rand(networkSize-1)
       newNeuronNetwork.neurons[outputNeuron].inputs = newSeq[neuroTransmitter](newNeuronNetwork.neurons[outputNeuron].inputs.len()+1)
+      newNeuronNetwork.neurons[outputNeuron].inputNeurons.add(i)
       let newSize = newNeuronNetwork.neurons[outputNeuron].inputs.len()
       var outputIndex = newSeq[int](2)
       outputIndex[0] = outputNeuron
@@ -45,13 +50,6 @@ proc generateNetwork*(inputSize, outputSize, maxOutputCount, maxNetworkSize, max
       newNeuronNetwork.neurons[i].outputIndexes[j] = outputIndex
 
     if newNeuronNetwork.neurons[i].inputs.len() == 0: newNeuronNetwork.neurons[i].inputs = newSeq[neuroTransmitter](1)
-
-    #Input output indexes configuration
-    for j in countup(0, newNeuronNetwork.neurons[i].outputIndexes.len()-1):
-      var index = 0
-      if not newNeuronNetwork.neurons[i].inputs.len() == 0:
-        index = rand(newNeuronNetwork.neurons[i].inputs.len()-1)
-      newNeuronNetwork.neurons[i].inputOutputIndexes.add(index)
 
     #Output transmitter types configuration
     for j in countup(0, newNeuronNetwork.neurons[i].outputIndexes.len()-1):
@@ -68,9 +66,18 @@ proc generateNetwork*(inputSize, outputSize, maxOutputCount, maxNetworkSize, max
 
   while outputsLeft > 0:
     var randomNeuron = rand(networkSize-1)
-    if not newNeuronNetwork.neurons[randomNeuron].finalNeuron:
+    if not newNeuronNetwork.neurons[randomNeuron].finalNeuron and not newNeuronNetwork.neurons[randomNeuron].inputNeuron:
       newNeuronNetwork.neurons[randomNeuron].finalNeuron = true
       dec(outputsLeft)
+
+  for i in countup(0, networkSize-1):
+    #Input output indexes configuration
+    for j in countup(0, newNeuronNetwork.neurons[i].outputIndexes.len()-1):
+      var index = 0
+      if newNeuronNetwork.neurons[i].inputs.len() != 0:
+        index = rand(newNeuronNetwork.neurons[i].inputs.len()-1)
+      
+      newNeuronNetwork.neurons[i].inputOutputIndexes.add(index)
 
   return newNeuronNetwork
 

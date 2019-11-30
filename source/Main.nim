@@ -83,12 +83,12 @@ while window.open:
   window.draw(goalCircle)
   #window.draw(walls[0])
 
-  #updateRockets(true, true)
+  updateRockets(false, false)
 
-  if currentFrame < 180:
-    updateRockets(false, false)
-  else:
-    updateRockets(false, true)
+  # if currentFrame < 180:
+  #   updateRockets(false, false)
+  # else:
+  #   updateRockets(false, true)
 
   inc(currentFrame)
 
@@ -99,6 +99,26 @@ while window.open:
     var best: (float, int)
     best[0] = 9999999.0
     best[1] = -1
+    # var collectiveDist = 0.0
+    # var aliveCount = 0
+    # for i in countup(0, rockets.len()-1):
+    #   collectiveDist += distance(rockets[i].position, goal)
+    #   if rockets[i].alive:
+    #     inc(aliveCount)
+
+    # collectiveDist /= (float)rockets.len()
+    # collectiveDist -= (float)aliveCount
+    # collectiveDist += (float)(rockets.len() - aliveCount)
+
+    # for i in countup(0, rockets.len()-1):
+    #   var count = (int)(500 - collectiveDist)
+    #   if rockets[i].alive:
+    #     for j in countup(1, count):
+    #       matingPool.add(rockets[i].brain)
+
+    # best[0] = collectiveDist
+    # best[1] = 1
+
     for i in countup(0, rockets.len()-1):
       if i != 0:
         let dist = distance(goal, rockets[i].position)
